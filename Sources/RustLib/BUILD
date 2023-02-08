@@ -8,6 +8,7 @@ rust_library(
     deps = [
         ":alloc",
         "@crate_index_rustlib//:swift-bridge",
+        "//Sources/SwiftLib",  # Swift library we can call from Rust
     ],
 )
 
@@ -71,10 +72,9 @@ genrule(
     ],
     cmd = """
 $(location :swift_bridge_tool) $(locations :rustsrc)
-echo 'import bridge' | cat - SwiftBridgeCore.swift > tmpfile \
-        && mv tmpfile $(location SwiftBridgeCore.swift)
-echo 'import bridge' | cat - gen/gen.swift > tmpfile \
-        && mv tmpfile $(location gen.swift)
+echo 'import bridge' | cat - SwiftBridgeCore.swift > \
+        $(location SwiftBridgeCore.swift)
+echo 'import bridge' | cat - gen/gen.swift > $(location gen.swift)
 """,
     tools = [":swift_bridge_tool"],
 )
@@ -92,7 +92,15 @@ objc_library(
 # depends on the Objective-C library.
 swift_library(
     name = "RustLib",
-    srcs = [":gen_swift"],
+    srcs = [
+        ":gen_swift",
+
+        # Since swift-bridge generates symbols for the Rust-facing Swift
+        # library, we include its sources here so the linker can find them.
+        # Ideally we'd tell swift-bridge to only generate the symbols needed
+        # for Swift to call Rust.
+        "//Sources/SwiftLib:SwiftLibSources"
+    ],
     module_name = "RustLib",
     visibility = ["//visibility:public"],
     deps = [":objc_lib"],
