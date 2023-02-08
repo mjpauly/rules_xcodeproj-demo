@@ -76,3 +76,40 @@ local_repository(
     name = "com_acme",
     path = "fake_third_party/com_acme",
 )
+
+load("@rules_rust//crate_universe:repositories.bzl", "crate_universe_dependencies")
+
+crate_universe_dependencies()
+
+load("@rules_rust//crate_universe:defs.bzl", "crate", "crates_repository", "render_config")
+
+# crate repository for the RustLib core of the app
+
+# NOTE: don't forget to add the dependency to the rust_library target!
+# e.g. deps = [ ... , "@crate_index_rustlib//:swift-bridge", ]
+crates_repository(
+    name = "crate_index_rustlib",
+    cargo_lockfile = "//Sources/RustLib:Cargo.lock",
+    lockfile = "//Sources/RustLib:Cargo.Bazel.lock",
+    isolated = False,  # cache results of the previous invocation to
+                       # ${HOME}/.cargo so using it is fast
+    packages = {
+        "swift-bridge": crate.spec(
+            version = "0.1.48",
+        ),
+        "swift-bridge-build": crate.spec(
+            version = "0.1.48",
+        ),
+    },
+
+    # Setting the default package name to `""` forces the use of the macros defined in this repository
+    # to always use the root package when looking for dependencies or aliases. This should be considered
+    # optional as the repository also exposes alises for easy access to all dependencies.
+    render_config = render_config(
+        default_package_name = ""
+    ),
+)
+
+load("@crate_index_rustlib//:defs.bzl", "crate_repositories")
+
+crate_repositories()
